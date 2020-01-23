@@ -19,6 +19,7 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+static void wakeup1TicketLock(int pid);
 
 void
 pinit(void)
@@ -468,9 +469,32 @@ wakeup1(void *chan)
 void
 wakeup(void *chan)
 {
-  acquire(&ptable.lock);
-  wakeup1(chan);
-  release(&ptable.lock);
+    acquire(&ptable.lock);
+    wakeup1(chan);
+    release(&ptable.lock);
+}
+
+//PAGEBREAK!
+// Wake up process with the specific  pid.
+// The ptable lock must be held.
+static void
+wakeup1TicketLock(int pid)
+{
+    struct proc *p;
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        if(p->state == SLEEPING && p->pid == pid)
+            p->state = RUNNABLE;
+
+}
+
+// Wake up  process with specific pid.
+void
+wakeupTicketLock(int pid)
+{
+    acquire(&ptable.lock);
+    wakeup1TicketLock(pid);
+    release(&ptable.lock);
 }
 
 // Kill the process with the given pid.

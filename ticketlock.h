@@ -1,12 +1,15 @@
 // Mutual exclusion lock.
-struct ticketLock {
-    uint locked;       // Is the lock held?
+struct ticketlock {
+    uint locked;           // Is the lock held?
+    int ticket;
+    int waitedPid[100];  // Array Of Waited Process
+    int QHead;          // Head Of The Queue
+    int QTail;         // Tail Of The Queue
+
 
     // For debugging:
     char *name;        // Name of lock.
-    int ticket;
-    struct cpu *cpu;   // The cpu holding the lock.
-    uint pcs[10];      // The call stack (an array of program counters)
+    int pid;          // Process holding lock
     // that locked the lock.
 };
 
