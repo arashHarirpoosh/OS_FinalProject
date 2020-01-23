@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "ticketlock.h"
 
 struct {
   struct spinlock lock;
@@ -14,7 +15,10 @@ struct {
 
 static struct proc *initproc;
 
+struct ticketlock tl;
+
 int nextpid = 1;
+int sharedCounter = 0;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -555,4 +559,21 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int
+sys_ticketlockInit(void)
+{
+    sharedCounter = 0;
+    initticketlock(&tl,"ticketLock");
+    return 0;
+}
+
+int
+sys_ticketlockTest(void)
+{
+    acquireticketlock(&tl);
+    sharedCounter++;
+    releaseticketlock(&tl);
+    return sharedCounter;
 }

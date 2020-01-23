@@ -8,7 +8,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "sleeplock.h"
+#include "ticketlock.h"
 
 void
 initticketlock(struct ticketlock *lk, char *name)
@@ -18,7 +18,7 @@ initticketlock(struct ticketlock *lk, char *name)
     lk->locked = 0;
     lk->pid = 0;
     lk->ticket = 0;
-    lk->QHead = 0;
+    lk->QHead = -1;
     lk->QTail = 0;
 }
 
@@ -30,7 +30,7 @@ acquireticketlock(struct ticketlock *lk)
         lk->waitedPid[lk->QTail] = myproc()->pid;
         lk->QTail += 1;
     }
-    lk->ticket = fetch_and_add(lk->ticket, 1);
+    lk->ticket = fetch_and_add(&lk->ticket, 1);
     while (lk->locked) {
         sleep(lk, &lk->lk);
     }
@@ -45,12 +45,12 @@ releaseticketlock(struct ticketlock *lk)
     acquire(&lk->lk);
     lk->locked = 0;
     lk->pid = 0;
-    wakeupTicketLock(lk->waitedPid[lk->QHead]);
     lk->QHead += 1;
+    wakeupTicketLock(lk->waitedPid[lk->QHead]);
     release(&lk->lk);
 }
 
-int
+/*int
 holdingsleep(struct ticketlock *lk)
 {
     int r;
@@ -59,7 +59,7 @@ holdingsleep(struct ticketlock *lk)
     r = lk->locked && (lk->pid == myproc()->pid);
     release(&lk->lk);
     return r;
-}
+}*/
 
 
 
