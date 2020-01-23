@@ -89,3 +89,21 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// return parent id
+int
+sys_getppid(void)
+{
+return myproc()-> parent->pid;
+}
+
+
+//return number of times a system call is invoked
+int
+sys_getCount(void)
+{
+int call_num;
+argint(0, &call_num);
+return myproc()->counter[call_num];
+}
+
