@@ -23,9 +23,6 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getppid(void);
-int getChildren(int pid);
-int getCount(int call_num);
 
 // ulib.c
 int stat(const char*, struct stat*);
