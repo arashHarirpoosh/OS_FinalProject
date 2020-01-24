@@ -24,9 +24,10 @@ int main ()
     }
     if (pid < 0){
         printf(1, "fork failed\n");
+        exit();
     } else if (pid == 0){
         printf(1, "child adding t shared counter\n");
-        ticketlockTest();
+        printf(1,"%d\n",ticketlockTest());
         exit();
     } else{
         for (int i = 0; i < NCHILD; i++) {

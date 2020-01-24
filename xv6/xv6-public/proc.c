@@ -568,12 +568,39 @@ sys_ticketlockInit(void)
     initticketlock(&tl,"ticketLock");
     return 0;
 }
-
 int
 sys_ticketlockTest(void)
 {
     acquireticketlock(&tl);
     sharedCounter++;
     releaseticketlock(&tl);
-    return sharedCounter;
+    return tl.ticket;
+}
+
+int
+sys_rwinit(void)
+{
+    sharedCounter = 0;
+    initticketlock(&tl, "readerWriter");
+    return 0;
+}
+
+int
+sys_rwtest(void)
+{
+    int pattern;
+    int result = 0;
+    argint(0, &pattern);
+    acquireticketlock(&tl);
+
+    // Writer
+    if (pattern == 1) {
+        sharedCounter++;
+    }
+        // Reader
+    else if (pattern == 0){
+        result = sharedCounter;
+    }
+    releaseticketlock(&tl);
+    return result;
 }

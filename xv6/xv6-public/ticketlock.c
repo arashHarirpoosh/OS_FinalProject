@@ -26,11 +26,11 @@ void
 acquireticketlock(struct ticketlock *lk)
 {
     acquire(&lk->lk);
-    if (lk->locked == 0) {
+    if (lk->locked) {
         lk->waitedPid[lk->QTail] = myproc()->pid;
-        lk->QTail += 1;
+        fetch_and_add(&lk->QTail,1);
     }
-    lk->ticket = fetch_and_add(&lk->ticket, 1);
+    fetch_and_add(&lk->ticket, 1);
     while (lk->locked) {
         sleep(lk, &lk->lk);
     }
@@ -45,7 +45,7 @@ releaseticketlock(struct ticketlock *lk)
     acquire(&lk->lk);
     lk->locked = 0;
     lk->pid = 0;
-    lk->QHead += 1;
+    fetch_and_add(&lk->QHead, 1);
     wakeupTicketLock(lk->waitedPid[lk->QHead]);
     release(&lk->lk);
 }
