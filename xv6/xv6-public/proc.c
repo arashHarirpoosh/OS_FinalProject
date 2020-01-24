@@ -16,9 +16,12 @@ struct {
 static struct proc *initproc;
 
 struct ticketlock tl;
+struct ticketlock mutex, write;
+//struct spinlock mutex, write;
 
 int nextpid = 1;
 int sharedCounter = 0;
+int readerCount=0;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -572,6 +575,7 @@ int
 sys_ticketlockTest(void)
 {
     acquireticketlock(&tl);
+    microdelay(700000);
     sharedCounter++;
     releaseticketlock(&tl);
     return tl.ticket;
@@ -581,7 +585,10 @@ int
 sys_rwinit(void)
 {
     sharedCounter = 0;
-    initticketlock(&tl, "readerWriter");
+    initticketlock(&mutex, "mutex readerwriter");
+    initticketlock(&write, "write readerwrite");
+    /*initlock(&mutex, "m");
+    initlock(&write, "w");*/
     return 0;
 }
 
@@ -591,16 +598,64 @@ sys_rwtest(void)
     int pattern;
     int result = 0;
     argint(0, &pattern);
-    acquireticketlock(&tl);
-
     // Writer
     if (pattern == 1) {
+        acquireticketlock(&write);
+        microdelay(70);
         sharedCounter++;
+        releaseticketlock(&write);
     }
         // Reader
     else if (pattern == 0){
+        acquireticketlock(&mutex);
+        readerCount++;
+        if (readerCount == 1){
+            acquireticketlock(&write);
+        }
+        releaseticketlock(&mutex);
         result = sharedCounter;
+        microdelay(70);
+        acquireticketlock(&mutex);
+        readerCount--;
+        if (readerCount == 0){
+            releaseticketlock(&write);
+        }
+        releaseticketlock(&mutex);
     }
-    releaseticketlock(&tl);
+    //releaseticketlock(&tl)
     return result;
 }
+
+/*int
+sys_rwtest(void)
+{
+    int pattern;
+    int result = 0;
+    argint(0, &pattern);
+    // Writer
+    if (pattern == 1) {
+        acquire(&write);
+        microdelay(1000000);
+        sharedCounter++;
+        release(&write);
+    }
+        // Reader
+    else if (pattern == 0){
+        acquire(&mutex);
+        readerCount++;
+        if (readerCount == 1){
+            acquire(&write);
+        }
+        release(&mutex);
+        result = sharedCounter;
+        microdelay(700000);
+        acquire(&mutex);
+        readerCount--;
+        if (readerCount == 0){
+            release(&write);
+        }
+        release(&mutex);
+    }
+    //releaseticketlock(&tl)
+    return result;
+}*/

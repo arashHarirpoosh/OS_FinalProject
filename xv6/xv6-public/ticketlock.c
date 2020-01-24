@@ -26,17 +26,21 @@ void
 acquireticketlock(struct ticketlock *lk)
 {
     acquire(&lk->lk);
-    if (lk->locked) {
-        lk->waitedPid[lk->QTail] = myproc()->pid;
-        fetch_and_add(&lk->QTail,1);
-    }
-    fetch_and_add(&lk->ticket, 1);
-    while (lk->locked) {
-        sleep(lk, &lk->lk);
-    }
-    lk->locked = 1;
-    lk->pid = myproc()->pid;
-    release(&lk->lk);
+       if (lk->locked) {
+            lk->waitedPid[lk->QTail] = myproc()->pid;
+            fetch_and_add(&lk->QTail, 1);
+        }
+        fetch_and_add(&lk->ticket, 1);
+        if (lk->QTail == 100){
+            lk->QTail  =0;
+        }
+        while (lk->locked) {
+            sleep(lk, &lk->lk);
+        }
+        lk->locked = 1;
+        lk->pid = myproc()->pid;
+        release(&lk->lk);
+
 }
 
 void
@@ -46,12 +50,19 @@ releaseticketlock(struct ticketlock *lk)
     lk->locked = 0;
     lk->pid = 0;
     fetch_and_add(&lk->QHead, 1);
-    wakeupTicketLock(lk->waitedPid[lk->QHead]);
-    release(&lk->lk);
+    if(lk->QHead == 100){
+        lk->QHead = 0;
+    }
+    if (lk->QHead == lk->QTail){
+        lk->QHead = -1;
+        lk->QTail = 0;
+    }
+   wakeupTicketLock(lk->waitedPid[lk->QHead]);
+   release(&lk->lk);
 }
 
 /*int
-holdingsleep(struct ticketlock *lk)
+holdingticket(struct ticketlock *lk)
 {
     int r;
 
@@ -59,7 +70,7 @@ holdingsleep(struct ticketlock *lk)
     r = lk->locked && (lk->pid == myproc()->pid);
     release(&lk->lk);
     return r;
-}*/
-
+}
+*/
 
 

@@ -5,8 +5,8 @@
 #include "types.h"
 #include "user.h"
 #include "stat.h"
-
 #define NCHILD 10
+
 void testReaderWriters(int* pattern, int pattern_size);
 int main () {
     char argv[100];
@@ -48,12 +48,12 @@ void testReaderWriters(int* pattern, int pattern_size){
         printf(1, "fork failed\n");
         exit();
     } else if (pid == 0) {
-        printf(1, "child adding to shared counter\n");
+        printf(1, "child adding to shared counter %d\n", pattern[i-1]);
         res = rwtest(pattern[i-1]);
         if (pattern[i-1] == 0){
-            printf(2, "reader read from shared counter\n");
+            printf(1, "reader read from shared counter\n");
         } else{
-            printf(1, "writer added to shared counter\n");
+            printf(2, "writer added to shared counter\n");
         }
         exit();
     } else{
