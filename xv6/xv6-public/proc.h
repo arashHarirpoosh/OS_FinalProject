@@ -8,6 +8,7 @@ struct cpu {
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
   struct proc *proc;           // The process running on this cpu or null
+  struct thread *thread;       // The thread running on this cpu or null
 };
 
 extern struct cpu cpus[NCPU];
@@ -26,28 +27,52 @@ extern int ncpu;
 // but it is on the stack and allocproc() manipulates it.
 struct context {
   uint edi;
-  uint esi;
+  uint esi; // sp
   uint ebx;
   uint ebp;
-  uint eip;
+  uint eip; // pc
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum threadstate { NOTUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+struct thread {
+    int tid;                     // Thread ID
+    struct thread *tparent;      // Parent Thread
+    struct proc *tproc;          // Thread process
+    enum threadstate tstate;     // Thread state
+    void *chan;                  // If non-zero, sleeping on chan
+    struct context *context;     // swtch() here to run process
+    char *kstack;                // Bottom of kernel stack for this process
+    struct trapframe *tf;        // Trap frame for current syscall
+
+};
+
+struct ttable{
+    int nexttid;                 // Index of ttable
+    struct thread *allthreads[MAX_THREADS];  // Threads of the process
+    struct spinlock *lock;
+};
+
+
+//enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE, USED };
+enum procstate { UNUSED, USED };
 
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
-  char *kstack;                // Bottom of kernel stack for this process
+  //char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
   struct proc *parent;         // Parent process
-  struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process
-  void *chan;                  // If non-zero, sleeping on chan
+  //struct trapframe *tf;        // Trap frame for current syscall
+  //struct context *context;     // swtch() here to run process
+  //void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
+  struct ttable *ttable;     // Threads of the process
+  //struct thread *threads[MAX_THREADS];  // Threads of the process
   char name[16];               // Process name (debugging)
 };
 
