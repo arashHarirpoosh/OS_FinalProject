@@ -43,6 +43,12 @@ sys_getpid(void)
 }
 
 int
+sys_getThreadid(void)
+{
+  return mythread()->tid;
+}
+
+int
 sys_sbrk(void)
 {
   int addr;

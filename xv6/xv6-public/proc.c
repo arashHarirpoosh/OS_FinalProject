@@ -61,6 +61,7 @@ mycpu(void)
   panic("unknown apicid\n");
 }
 
+//current proc
 // Disable interrupts so that we are not rescheduled
 // while reading proc from the cpu structure
 struct proc*
@@ -74,6 +75,7 @@ myproc(void) {
   return p;
 }
 
+//current thread
 // Disable interrupts so that we are not rescheduled
 // while reading thread from the cpu structure
 struct thread*
