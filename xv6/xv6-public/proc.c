@@ -182,6 +182,12 @@ growproc(int n)
   return 0;
 }
 
+//Creating a Thread for process
+int createThread(void)
+{
+  (*function, *void) stack;
+}
+
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
