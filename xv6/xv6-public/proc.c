@@ -253,6 +253,51 @@ growproc(int n)
 int createThread(void)
 {
   (*function, *void) stack;
+  int i, pid;
+  struct thread *nt;
+  struct proc *curproc = myproc();
+  struct thread *curthread = mythread();
+
+  // Allocate process.
+  if((nt = allocthread()) == 0){
+    return -1;
+  }
+
+  // Copy process state from proc.
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+    kfree(np->ttable->allthreads[0]->kstack);
+    np->ttable->allthreads[0]->kstack = 0;
+    np->state = UNUSED;
+    //np->ttable->allthreads[0]->tstate = NOTUSED;
+    return -1;
+  }
+  np->sz = curproc->sz;
+  np->ttable->allthreads[0]->tparent = curthread;
+  *np->ttable->allthreads[0]->tf = *curthread->tf;
+  /////////
+  t->context->es = stack
+  t->context->eip = function
+  /////////
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->ttable->allthreads[0]->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+    if(curproc->ofile[i])
+      np->ofile[i] = filedup(curproc->ofile[i]);
+  np->cwd = idup(curproc->cwd);
+
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return pid;
 }
 
 // Create a new process copying p as the parent.
