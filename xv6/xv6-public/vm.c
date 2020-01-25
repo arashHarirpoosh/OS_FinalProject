@@ -157,7 +157,10 @@ void
 switchuvm(struct thread *t)
 {
   if(t == 0)
-    panic("switchuvm: no process");
+    panic("switchuvm: no thread");
+  if(t->tproc == 0)
+      panic("switchum: no process");
+  acquire(&t->tproc->ttable.lock);
   if(t->kstack == 0)
     panic("switchuvm: no kstack");
   if(t->tproc->pgdir == 0)
@@ -175,6 +178,7 @@ switchuvm(struct thread *t)
   ltr(SEG_TSS << 3);
   lcr3(V2P(t->tproc->pgdir));  // switch to process's address space
   popcli();
+  release(&t->tproc->ttable.lock);
 }
 
 // Load the initcode into address 0 of pgdir.

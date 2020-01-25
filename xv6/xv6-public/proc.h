@@ -1,3 +1,5 @@
+#include "spinlock.h"
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -50,7 +52,7 @@ struct thread {
 struct ttable{
     //int nexttid;                 // Index of ttable
     struct thread allthreads[MAX_THREADS];  // Threads of the process
-    struct spinlock *lock;
+    struct spinlock lock;
 };
 
 
