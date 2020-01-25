@@ -48,8 +48,8 @@ struct thread {
 };
 
 struct ttable{
-    int nexttid;                 // Index of ttable
-    struct thread *allthreads[MAX_THREADS];  // Threads of the process
+    //int nexttid;                 // Index of ttable
+    struct thread allthreads[MAX_THREADS];  // Threads of the process
     struct spinlock *lock;
 };
 
@@ -71,7 +71,7 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
-  struct ttable *ttable;     // Threads of the process
+  struct ttable ttable;     // Threads of the process
   //struct thread *threads[MAX_THREADS];  // Threads of the process
   char name[16];               // Process name (debugging)
 };
