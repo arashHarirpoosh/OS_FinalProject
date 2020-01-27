@@ -99,7 +99,7 @@ const char* getstate(enum threadstate tstate)
         case SLEEPING: return "sleeping";
         case RUNNABLE: return "runnable";
         case RUNNING: return "running";
-        case ZOMBIE: return "zombie";
+        //case ZOMBIE: return "zombie";
             /* etc... */
     }
     return "none";
@@ -431,7 +431,6 @@ exit(void)
 //    cprintf("exit bye\n");
   struct proc *curproc = myproc();
   struct proc *p;
-  struct thread *t;
   int fd;
 
   if(curproc == initproc)
@@ -461,17 +460,16 @@ exit(void)
 //      cprintf("exit %d %d\n", p->parent->pid, curproc->pid);
     if(p->parent == curproc) {
         p->parent = initproc;
-        acquire(&p->ttable.lock);
-        for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++)
-            if (t->tstate == ZOMBIE)
-                wakeup1(initproc);
-        release(&p->ttable.lock);
+        if (p->state == ZOMBIE){
+            wakeup1(initproc);
+        }
     }
   }
 
   // Jump into the scheduler, never to return.
-  mythread()->tstate = ZOMBIE;
-//  p->state = NOTUSED;
+  curproc->state = ZOMBIE;
+  mythread()->tstate = NOTUSED;
+  //p->state = NOTUSED;
   sched();
   panic("zombie exit");
 }
@@ -499,29 +497,41 @@ wait(void)
 //      cprintf("1\n");
       //acquire(&p->ttable.lock);
 //      cprintf("2\n");
-        for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
-            //t = p->ttable.allthreads[i];
-            if (t->tstate == ZOMBIE) {
-                //cprintf("%s \n", getstate(t->tstate));
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+            if(p->parent != curproc)
+                continue;
+            havekids = 1;
+            if(p->state == ZOMBIE){
                 // Found one.
-                  pid = p->pid;
-                  kfree(t->kstack);
-                  t->kstack = 0;
-                  freevm(p->pgdir);
-                  p->pid = 0;
-                  p->parent = 0;
-                  p->name[0] = 0;
-                  p->killed = 0;
-                  p->state = UNUSED;
-                 // p->ttable->nexttid -= 1;
-                  t->tid = 0;
-                  t->tparent = 0;
-                  t->tstate = NOTUSED;
-                  //release(&p->ttable.lock);
-                  release(&ptable.lock);
-                  return pid;
+                freevm(p->pgdir);
+                pid = p->pid;
+                p->pid = 0;
+                p->parent = 0;
+                p->name[0] = 0;
+                p->killed = 0;
+                p->state = UNUSED;
+
+                acquire(&p->ttable.lock);
+                for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
+                    //t = p->ttable.allthreads[i];
+                    if (t->tstate == NOTUSED) {
+                        continue;
+                    }
+                        //cprintf("%s \n", getstate(t->tstate));
+                        // Found one.
+                        kfree(t->kstack);
+                        t->kstack = 0;
+                        // p->ttable->nexttid -= 1;
+                        t->tid = 0;
+                        t->tparent = 0;
+                        t->tstate = NOTUSED;
+                }
+                release(&p->ttable.lock);
+                release(&ptable.lock);
+                return pid;
             }
-      }
+        }
+
     }
 
     // No point waiting if we don't have any children.
@@ -631,6 +641,7 @@ sched(void)
   int intena;
 //  cprintf("sched is here\n");
   //struct proc *p = myproc();
+  //cprintf("%s\n", getstate(mythread()->tstate));
   struct thread *t = mythread();
 //  cprintf("thread say hello\n");
 //  acquire(&t->tproc->ttable.lock);

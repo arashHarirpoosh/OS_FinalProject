@@ -35,7 +35,7 @@ struct context {
   uint eip; // pc
 };
 
-enum threadstate { NOTUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum threadstate { NOTUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING };
 
 struct thread {
     int tid;                     // Thread ID
@@ -57,7 +57,7 @@ struct ttable{
 
 
 //enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE, USED };
-enum procstate { UNUSED, USED };
+enum procstate { UNUSED, USED, ZOMBIE };
 
 // Per-process state
 struct proc {
