@@ -20,7 +20,7 @@ int mkdir(const char*);
 int chdir(const char*);
 int dup(int);
 int getpid(void);
-int getThreadid(void);
+int getThreadID(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
@@ -28,6 +28,7 @@ int ticketlockInit(void);
 int ticketlockTest(void);
 int rwinit(void);
 int rwtest(int pattern);
+int createThread(void(*function)(), void* stack);
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -316,55 +316,39 @@ growproc(int n)
 }
 
 //Creating a Thread for process
-int createThread(void)
+int
+createThread(void(*function)(), void* stack)
 {
-  /*(*function, *void) stack;
-  int i, pid;
-  struct thread *nt;
-  struct proc *curproc = myproc();
-  struct thread *curthread = mythread();
+    int tid;
+    struct thread *nt;
+    struct proc *curproc = myproc();
+    struct thread *curthread = mythread();
 
-  // Allocate process.
-  if((nt = allocthread()) == 0){
-    return -1;
-  }
+    // Allocate process.
+    if((nt = allocthread(curproc)) == 0){
+        return -1;
+    }
 
-  // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
-    kfree(np->ttable->allthreads[0]->kstack);
-    np->ttable->allthreads[0]->kstack = 0;
-    np->state = UNUSED;
-    //np->ttable->allthreads[0]->tstate = NOTUSED;
-    return -1;
-  }
-  np->sz = curproc->sz;
-  np->ttable->allthreads[0]->tparent = curthread;
-  *np->ttable->allthreads[0]->tf = *curthread->tf;
-  /////////
-  t->context->es = stack
-  t->context->eip = function
-  /////////
+    nt->tproc = curproc;
+    nt->tparent = curthread;
+    *nt->tf = *curthread->tf;
 
-  // Clear %eax so that fork returns 0 in the child.
-  np->ttable->allthreads[0]->tf->eax = 0;
+    nt->tf->esi = (uint)stack;
+    nt->tf->eip = (uint)function;
 
-  for(i = 0; i < NOFILE; i++)
-    if(curproc->ofile[i])
-      np->ofile[i] = filedup(curproc->ofile[i]);
-  np->cwd = idup(curproc->cwd);
+    // Clear %eax so that fork returns 0 in the child.
+    nt->tf->eax = 0;
 
-  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+    tid = nt->tid;
 
-  pid = np->pid;
+    acquire(&ptable.lock);
 
-  acquire(&ptable.lock);
+    nt->tstate = USED;
+    nt->tstate = RUNNABLE;
 
-  np->state = RUNNABLE;
+    release(&ptable.lock);
 
-  release(&ptable.lock);
-
-  return pid;*/
-    return 0;
+    return tid;
 }
 
 // Create a new process copying p as the parent.
@@ -902,6 +886,7 @@ int
 sys_rwinit(void)
 {
     sharedCounter = 0;
+    readerCount = 0;
     initticketlock(&mutex, "mutex readerwriter");
     initticketlock(&write, "write readerwrite");
     /*initlock(&mutex, "m");

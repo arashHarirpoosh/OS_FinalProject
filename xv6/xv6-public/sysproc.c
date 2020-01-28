@@ -43,7 +43,7 @@ sys_getpid(void)
 }
 
 int
-sys_getThreadid(void)
+sys_getThreadID(void)
 {
   return mythread()->tid;
 }
