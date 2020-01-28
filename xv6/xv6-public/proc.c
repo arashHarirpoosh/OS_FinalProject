@@ -902,8 +902,9 @@ int
 sys_rwinit(void)
 {
     sharedCounter = 0;
+    readerCount = 0;
     initticketlock(&mutex, "mutex readerwriter");
-    initticketlock(&write, "write readerwrite");
+    initti cketlock(&write, "write readerwrite");
     /*initlock(&mutex, "m");
     initlock(&write, "w");*/
     return 0;
