@@ -29,6 +29,8 @@ int ticketlockTest(void);
 int rwinit(void);
 int rwtest(int pattern);
 int createThread(void(*function)(), void* stack);
+int exitThread(void);
+int joinThread(int threadID);
 
 // ulib.c
 int stat(const char*, struct stat*);
