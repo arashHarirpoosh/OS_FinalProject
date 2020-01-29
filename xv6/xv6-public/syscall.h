@@ -25,3 +25,6 @@
 #define SYS_ticketlockTest  24
 #define SYS_rwinit          25
 #define SYS_rwtest          26
+#define SYS_createThread      27
+#define SYS_exitThread      28
+#define SYS_joinThread      29
