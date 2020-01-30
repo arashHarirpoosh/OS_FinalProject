@@ -12,7 +12,6 @@ int main ()
 {
     int pid;
     ticketlockInit();
-
     pid = fork();
     for (int i = 1; i < NCHILD; i++) {
         if (pid < 0){

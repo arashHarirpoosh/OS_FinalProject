@@ -50,6 +50,7 @@ void
 release(struct spinlock *lk)
 {
   if(!holding(lk)) {
+//      panic(lk->name);
       panic("release");
   }
 

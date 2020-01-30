@@ -35,7 +35,7 @@ struct context {
   uint eip; // pc
 };
 
-enum threadstate { NOTUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING };
+enum threadstate { NOTUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, TZOMBIE };
 
 struct thread {
     int tid;                     // Thread ID
