@@ -1027,10 +1027,10 @@ procdump(void)
     static char *states[] = {
             [NOTUSED]   "notused",
             [EMBRYO]    "embryo",
-            [SLEEPING]  "sleep ",
-            [RUNNABLE]  "runble",
-            [RUNNING]   "run   ",
-            [ZOMBIE]    "zombie"
+            [SLEEPING]  "sleeping",
+            [RUNNABLE]  "runnable",
+            [RUNNING]   "running",
+            [TZOMBIE]    "thread zombie"
     };
     int i;
     struct proc *p;
@@ -1042,7 +1042,7 @@ procdump(void)
 //      cprintf("1\n");
         acquire(&p->ttable.lock);
 //      cprintf("2\n");
-        for (int j = 0; j < MAX_THREADS; j++) {
+        for (t=p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++) {
             t = &p->ttable.allthreads[j];
             if (t->tstate == NOTUSED)
                 continue;
