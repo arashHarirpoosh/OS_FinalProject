@@ -651,6 +651,8 @@ sys_joinThread(void)
 
                 if (t->tstate == TZOMBIE) {
 //                    release(&p->ttable.lock);
+                    //cprintf("join %d %d\n", threadID, t->tid);
+                    //release(&p->ttable.lock);
                     release(&ptable.lock);
                     return 0;
                 }
@@ -663,6 +665,9 @@ sys_joinThread(void)
         if(!founded || t->tproc->killed){
                 cprintf("%d %d\n", threadID, mythread()->tid);
             release(&ptable.lock);
+            if(!founded || t->tproc->killed){
+                //cprintf("%d %d\n", threadID, mythread()->tid);
+                release(&ptable.lock);
 //                    release(&p->ttable.lock);
             return -1;
         }
