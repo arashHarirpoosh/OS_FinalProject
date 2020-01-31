@@ -32,12 +32,12 @@ acquireticketlock(struct ticketlock *lk)
         }
         fetch_and_add(&lk->ticket, 1);
         if (lk->QTail == 100){
-            lk->QTail  =0;
+            lk->QTail  =0;//if tail reaches the end of the array, reset it to 0(like a circular queue)
         }
         while (lk->locked) {
             sleep(lk, &lk->lk);
         }
-        lk->locked = 1;
+        lk->locked = 1;//lock acquired
         lk->pid = myproc()->pid;
         release(&lk->lk);
 
@@ -47,13 +47,13 @@ void
 releaseticketlock(struct ticketlock *lk)
 {
     acquire(&lk->lk);
-    lk->locked = 0;
+    lk->locked = 0;//lock released
     lk->pid = 0;
     fetch_and_add(&lk->QHead, 1);
     if(lk->QHead == 100){
-        lk->QHead = 0;
+        lk->QHead = 0;//if head reaches the end of the array, reset it to 0(like a circular queue)
     }
-    if (lk->QHead == lk->QTail){
+    if (lk->QHead == lk->QTail){//if head and tail reach each other, reset head and tail
         lk->QHead = -1;
         lk->QTail = 0;
     }
