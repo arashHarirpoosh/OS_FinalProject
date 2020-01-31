@@ -1,6 +1,6 @@
 //
 // Created by arash on 2020-01-24.
-//
+//testing thread system calls!
 
 #include "types.h"
 #include "user.h"
@@ -8,6 +8,7 @@
 
 #define NUMOFTHREADS 7
 
+//functoin that every thread has to execute(a simple print and sleep, followed by exiting the thread)
 void threadFunction(){
 	printf(1, "Thread ID is  %d \n", getThreadID());
 	sleep(100);
@@ -51,23 +52,23 @@ void threadFunction(){
 int main ()
 {
 
-    int allThreadstID [NUMOFTHREADS];
+    int allThreadstID [NUMOFTHREADS];//array of threads
     int joinstatus;
     for (int i=0; i< NUMOFTHREADS; i++){
         sleep(5);
-        allThreadstID[i] = createThread(&threadFunction, malloc(4096));
+        allThreadstID[i] = createThread(&threadFunction, malloc(4096));//creating thread
     }
 
         printf(1, "before join\n");
         for (int i = 0; i < NUMOFTHREADS; i++) {
             sleep(70);
 
-            joinstatus = joinThread(allThreadstID[i]);
+            joinstatus = joinThread(allThreadstID[i]);//waits till this thread exits and joins
 //            printf(1,"%d\n",joinstatus);
 //            sleep(7);
-            if (!joinstatus){
+            if (!joinstatus){//success
                 printf(1, "Thread %d joined successfully.\n", allThreadstID[i]);
-            } else{
+            } else{//failure
                 printf(1, "Thread %d joined failed. \n", allThreadstID[i]);
             }
         }
