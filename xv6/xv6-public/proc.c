@@ -390,6 +390,7 @@ fork(void)
     struct proc *np;
     struct proc *curproc = myproc();
     struct thread *curthread = mythread();
+    struct thread *t;
 
     // Allocate process.
     if((np = allocproc()) == 0){
@@ -401,16 +402,32 @@ fork(void)
 
     // Copy process state from proc.
     if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
-        kfree(np->ttable.allthreads[0].kstack);
-        np->ttable.allthreads[0].kstack = 0;
         np->state = UNUSED;
-        //np->ttable->allthreads[0]->tstate = NOTUSED;
+        acquire(&np->ttable.lock);
+        for(t = np->ttable.allthreads; t < &np->ttable.allthreads[MAX_THREADS]; t++){
+            kfree(t->kstack);
+            t->kstack = 0;
+            t->tstate = NOTUSED;
+            //np->ttable->allthreads[0]->tstate = NOTUSED;
+        }
+        release(&np->ttable.lock);
         return -1;
     }
     np->sz = curproc->sz;
     np->parent = curproc;
     np->numOfThreads = 1;
     np->ttable.allthreads[0].tparent = curthread;
+    for(t = np->ttable.allthreads; t < &np->ttable.allthreads[MAX_THREADS]; t++){
+        if (np->ttable.allthreads[0].tparent == curthread)
+            continue;
+        kfree(t->kstack);
+        t->kstack = 0;
+        t->tf = 0;
+        t->tstate = NOTUSED;
+        t->tid = 0;
+        t->tparent = 0;
+        //np->ttable->allthreads[0]->tstate = NOTUSED;
+    }
     *np->ttable.allthreads[0].tf = *curthread->tf;
 
     // Clear %eax so that fork returns 0 in the child.
@@ -445,7 +462,8 @@ exit(void)
 {
 //    cprintf("exit bye\n");
     struct proc *curproc = myproc();
-    struct thread *curthread = mythread();
+//    struct thread *curthread = mythread();
+    struct thread *t;
     struct proc *p;
     int fd;
 
@@ -467,26 +485,40 @@ exit(void)
 //    cprintf("1\n");
     acquire(&ptable.lock);
 //  cprintf("2\n");
-
+//    acquire(&curproc->parent->ttable.lock);
     // Parent might be sleeping in wait().
-    wakeup1(curproc->ttable.allthreads[0].chan);
+    for (t = curproc->parent->ttable.allthreads;  t< &curproc->parent->ttable.allthreads[MAX_THREADS]; t++) {
+        wakeup1(t->chan);
+    }
+//    release(&curproc->parent->ttable.lock);
 
+//    acquire(&initproc->ttable.lock);
     // Pass abandoned children to init.
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 //      cprintf("exit %d %d\n", p->parent->pid, curproc->pid);
         if(p->parent == curproc) {
             p->parent = initproc;
-            if (p->state == ZOMBIE){
-                wakeup1(initproc->ttable.allthreads[0].chan);
+            if (p->state == ZOMBIE) {
+                for (t = initproc->ttable.allthreads; t < &initproc->ttable.allthreads[MAX_THREADS]; t++){
+                    wakeup1(t->chan);
+            }
             }
         }
     }
+//    release(&initproc->ttable.lock);
 
     // Jump into the scheduler, never to return.
     curproc->state = ZOMBIE;
     // p->ttable->nexttid -= 1;
-    curthread->tstate = TZOMBIE;
-    curthread->tproc->numOfThreads = 0;
+    acquire(&curproc->ttable.lock);
+    for (t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++) {
+        if (t->tstate == NOTUSED)
+            continue;
+        t->tstate = TZOMBIE;
+        t->tproc->numOfThreads = 0;
+    }
+    release(&curproc->ttable.lock);
+//    curthread->tproc->numOfThreads = 0;
 //    p->state = NOTUSED;
     sched();
     panic("zombie exit");
@@ -506,6 +538,7 @@ sys_exitThread(void)
     if (numOfThread == 0)
         exit();
     curthread->tstate = TZOMBIE;
+    wakeup1(curthread->chan);
     sched();
     panic("zombie exit");
 }
@@ -546,17 +579,19 @@ wait(void)
                     acquire(&p->ttable.lock);
                     for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
                         //t = p->ttable.allthreads[i];
-                        if (t->tstate == NOTUSED) {
+                        if (t->tstate == NOTUSED)
                             continue;
+//                        cprintf("wait  %d %d %d %s\n",  t->tid, havekids, t->tproc->killed, getstate(t->tstate));
+                        if (t->tstate == TZOMBIE) {
+                            //cprintf("%s \n", getstate(t->tstate));
+                            // Found one.
+                            kfree(t->kstack);
+                            t->kstack = 0;
+                            // p->ttable->nexttid -= 1;
+                            t->tid = 0;
+                            t->tparent = 0;
+                            t->tstate = NOTUSED;
                         }
-                        //cprintf("%s \n", getstate(t->tstate));
-                        // Found one.
-                        kfree(t->kstack);
-                        t->kstack = 0;
-                        // p->ttable->nexttid -= 1;
-                        t->tid = 0;
-                        t->tparent = 0;
-                        t->tstate = NOTUSED;
                     }
                     release(&p->ttable.lock);
                     release(&ptable.lock);
@@ -577,11 +612,11 @@ wait(void)
     }
 }
 
-int
+/*int
 sys_joinThread(void)
 {
     //    cprintf("wait\n");
-    struct proc *p;
+//    struct proc *p;
     int founded;
     int threadID;
     struct proc *curproc = myproc();
@@ -592,45 +627,48 @@ sys_joinThread(void)
     for(;;){
         // Scan through table looking for exited children.
         founded = 0;
-        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-            if(p != curproc)
-                continue;
+//        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//            if(p != curproc)
+//                continue;
 //        cprintf("%d %d\n", p->parent->pid, curproc->pid);
 //      cprintf("1\n");
             //acquire(&p->ttable.lock);
 //      cprintf("2\n");
-            //acquire(&p->ttable.lock);
-            for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++) {
+//            acquire(&p->ttable.lock);
+            for(t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++) {
 
                 //cprintf("%d\n", t->tid);
                 //t = p->ttable.allthreads[i];
                 if (t->tid != threadID) {
-                    founded = 0;
+                    if (!founded) {
+                        founded = 0;
+                    }
 //                    release(&p->ttable.lock);
                     continue;
                 }
                 founded = 1;
+                cprintf("join %d %d %d %d %s\n", threadID, t->tid, founded, t->tproc->killed, getstate(t->tstate));
+
                 if (t->tstate == TZOMBIE) {
-                    cprintf("join %d %d\n", threadID, t->tid);
-                    //release(&p->ttable.lock);
-//                    release(&ptable.lock);
+//                    release(&p->ttable.lock);
+                    release(&ptable.lock);
                     return 0;
                 }
 
-
-
             }
             // No point waiting if we don't have any children.
-            if(!founded || t->tproc->killed){
-                cprintf("%d %d\n", threadID, mythread()->tid);
-                release(&ptable.lock);
-//                    release(&p->ttable.lock);
-                return -1;
-            }
-            // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-            sleep(mythread()->chan, &ptable.lock);  //DOC: wait-sleep
-            }
 
+//            }
+//        cprintf("founded is %d\n", founded);
+        if(!founded || t->tproc->killed){
+                cprintf("%d %d\n", threadID, mythread()->tid);
+            release(&ptable.lock);
+//                    release(&p->ttable.lock);
+            return -1;
+        }
+        cprintf("sleep\n");
+        // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+        sleep(mythread()->chan, &ptable.lock);  //DOC: wait-sleep
 
 
 
@@ -638,6 +676,50 @@ sys_joinThread(void)
 //    cprintf("sleep");
     }
 
+}*/
+
+int
+sys_joinThread(void)
+{
+    struct thread *t;
+    int threadID;
+    int havekids;//, tid;
+    struct proc *curproc = myproc();
+    argint(0, &threadID);
+
+    acquire(&ptable.lock);
+    for(;;){
+        // Scan through table looking for exited children.
+        havekids = 0;
+        for(t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++){
+            if(t->tid != threadID)
+                continue;
+            havekids = 1;
+//            cprintf("join %d %d %d %d %s\n", threadID, t->tid, havekids, t->tproc->killed, getstate(t->tstate));
+            if(t->tstate == TZOMBIE){
+//                cprintf("ok\n");
+                // Found one.
+//                tid = t->tid;
+                kfree(t->kstack);
+                t->kstack = 0;
+                t->tid = 0;
+                t->tparent = 0;
+                t->tstate = UNUSED;
+                release(&ptable.lock);
+                return 0;
+            }
+        }
+
+        // No point waiting if we don't have any children.
+//        cprintf("is %d %d \n", havekids, curproc->killed);
+        if(!havekids || curproc->killed){
+            release(&ptable.lock);
+            return -1;
+        }
+
+        // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+        sleep(mythread()->chan, &ptable.lock);  //DOC: wait-sleep
+    }
 }
 
 //PAGEBREAK: 42

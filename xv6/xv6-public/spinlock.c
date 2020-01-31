@@ -27,8 +27,8 @@ acquire(struct spinlock *lk)
   pushcli(); // disable interrupts to avoid deadlock.
   if(holding(lk)) {
 //      cprintf("lock name is: %s \n", lk->name);
-//      panic(lk->name);
-      panic("acquire");
+      panic(lk->name);
+//      panic("acquire");
   }
 
   // The xchg is atomic.
