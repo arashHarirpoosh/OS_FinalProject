@@ -120,7 +120,10 @@ const char* getpstate(enum procstate pstate)
     return "none";
 }
 
-
+// Look in the process's thread table for an UNUSED thread.
+// If found, change state to EMBRYO and initialize
+// state required to run in the kernel.
+// Otherwise return 0.
 static struct thread*
 allocthread(struct proc *p) {
 //    int i;
@@ -136,7 +139,7 @@ allocthread(struct proc *p) {
                goto found;
        }*/
 
-    for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++)
+    for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++)//iterating through the process's thread table
         if(t->tstate == NOTUSED)
             goto found;
     return 0;
@@ -352,9 +355,9 @@ sys_createThread()
 
 
 //    cprintf("%d %d %d\n", (uint) stack, (uint) function, nt->tid);
-    nt->tf->eip = (uint)function;
+    nt->tf->eip = (uint)function;//extended instruction pointer
    // nt->context->eip = (uint) function;
-    nt->tf->esp = (uint)stack;
+    nt->tf->esp = (uint)stack;//extended stack pointer
 //    nt->context->eip = (uint)function;
 //    nt->context->esi = (uint)stack;
 
@@ -404,7 +407,7 @@ fork(void)
     if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
         np->state = UNUSED;
         acquire(&np->ttable.lock);
-        for(t = np->ttable.allthreads; t < &np->ttable.allthreads[MAX_THREADS]; t++){
+        for(t = np->ttable.allthreads; t < &np->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
             kfree(t->kstack);
             t->kstack = 0;
             t->tstate = NOTUSED;
@@ -417,7 +420,7 @@ fork(void)
     np->parent = curproc;
     np->numOfThreads = 1;
     np->ttable.allthreads[0].tparent = curthread;
-    for(t = np->ttable.allthreads; t < &np->ttable.allthreads[MAX_THREADS]; t++){
+    for(t = np->ttable.allthreads; t < &np->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
         if (np->ttable.allthreads[0].tparent == curthread)
             continue;
         kfree(t->kstack);
@@ -487,7 +490,7 @@ exit(void)
 //  cprintf("2\n");
 //    acquire(&curproc->parent->ttable.lock);
     // Parent might be sleeping in wait().
-    for (t = curproc->parent->ttable.allthreads;  t< &curproc->parent->ttable.allthreads[MAX_THREADS]; t++) {
+    for (t = curproc->parent->ttable.allthreads;  t< &curproc->parent->ttable.allthreads[MAX_THREADS]; t++) {//iterating through the process's thread table
         wakeup1(t->chan);
     }
 //    release(&curproc->parent->ttable.lock);
@@ -499,7 +502,7 @@ exit(void)
         if(p->parent == curproc) {
             p->parent = initproc;
             if (p->state == ZOMBIE) {
-                for (t = initproc->ttable.allthreads; t < &initproc->ttable.allthreads[MAX_THREADS]; t++){
+                for (t = initproc->ttable.allthreads; t < &initproc->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
                     wakeup1(t->chan);
             }
             }
@@ -511,7 +514,7 @@ exit(void)
     curproc->state = ZOMBIE;
     // p->ttable->nexttid -= 1;
     acquire(&curproc->ttable.lock);
-    for (t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++) {
+    for (t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++) {//iterating through the process's thread table
         if (t->tstate == NOTUSED)
             continue;
         t->tstate = TZOMBIE;
@@ -524,6 +527,9 @@ exit(void)
     panic("zombie exit");
 }
 
+// Exit the current thread.  Does not return.
+// An exited thread remains in the zombie state
+// until its parent calls wait() to find out it exited.
 void
 sys_exitThread(void)
 {
@@ -577,7 +583,7 @@ wait(void)
                     p->state = UNUSED;
 
                     acquire(&p->ttable.lock);
-                    for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
+                    for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
                         //t = p->ttable.allthreads[i];
                         if (t->tstate == NOTUSED)
                             continue;
@@ -683,6 +689,7 @@ sys_joinThread(void)
 
 }*/
 
+//waits until requested thread exits
 int
 sys_joinThread(void)
 {
@@ -696,16 +703,16 @@ sys_joinThread(void)
     for(;;){
         // Scan through table looking for exited children.
         havekids = 0;
-        for(t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++){
+        for(t = curproc->ttable.allthreads; t < &curproc->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
             if(t->tid != threadID)
                 continue;
             havekids = 1;
 //            cprintf("join %d %d %d %d %s\n", threadID, t->tid, havekids, t->tproc->killed, getstate(t->tstate));
-            if(t->tstate == TZOMBIE){
+            if(t->tstate == TZOMBIE){//if we found it
 //                cprintf("ok\n");
                 // Found one.
 //                tid = t->tid;
-                kfree(t->kstack);
+                kfree(t->kstack);//free memory space
                 t->kstack = 0;
                 t->tid = 0;
                 t->tparent = 0;
@@ -766,7 +773,7 @@ scheduler(void)
             acquire(&p->ttable.lock);
             //cprintf("afterlock\n");
             c->proc = p;
-            for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
+            for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
 
                 //t = p->ttable.allthreads[i];
                 if(t->tstate != RUNNABLE)
@@ -941,7 +948,7 @@ wakeup1(void *chan)
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         acquire(&p->ttable.lock);
-        for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
+        for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
             if (t->tstate == SLEEPING && t->chan == chan)
                 t->tstate = RUNNABLE;
         }
@@ -970,7 +977,7 @@ wakeup1TicketLock(int pid)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         if (p->pid == pid) {
             acquire(&p->ttable.lock);
-            for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){
+            for(t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++){//iterating through the process's thread table
                 if (t->tstate == SLEEPING)
                     t->tstate = RUNNABLE;
             }
@@ -1004,7 +1011,7 @@ kill(int pid)
             // Wake process from sleep if necessary.
             // Wake threads from sleep if necessary.
             acquire(&p->ttable.lock);
-            for (t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS];t++) {
+            for (t = p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS];t++) {//iterating through the process's thread table
                 if (t->tstate == SLEEPING)
                     t->tstate = RUNNABLE;
             }
@@ -1043,7 +1050,7 @@ procdump(void)
         acquire(&p->ttable.lock);
 //      cprintf("2\n");
 
-        for (t=p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++) {
+        for (t=p->ttable.allthreads; t < &p->ttable.allthreads[MAX_THREADS]; t++) {//iterating through the process's thread table
             if (t->tstate == NOTUSED)
                 continue;
             if (t->tstate >= 0 && t->tstate < NELEM(states) && states[t->tstate])
