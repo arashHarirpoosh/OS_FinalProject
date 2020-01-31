@@ -66,9 +66,9 @@ int main ()
 //            printf(1,"%d\n",joinstatus);
 //            sleep(7);
             if (!joinstatus){
-                printf(1, "Thread joined successfully.\n");
+                printf(1, "Thread %d joined successfully.\n", allThreadstID[i]);
             } else{
-                printf(1, "Thread joined failed. \n");
+                printf(1, "Thread %d joined failed. \n", allThreadstID[i]);
             }
         }
         printf(1, "after join \n");
