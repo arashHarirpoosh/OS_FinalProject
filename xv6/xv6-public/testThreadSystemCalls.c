@@ -1,34 +1,42 @@
-//
-// Created by arash on 2020-01-24.
-//
 
 #include "types.h"
 #include "user.h"
 #include "stat.h"
 
-#define NCHILD 10
+#define NUMOFTHREADS 7
 
 void threadFunction(){
-	printf(1, "thread with id &d entered", getThreadID());
+	printf(1, "threadID &d entered\n", getThreadID());
 	exitThread();
 }
 
 int main ()
 {
-	struct thread allThreads[7];
-	int pid = fork();
-        if (pid == 0){
-		for(int i=0;i < 7;i++){
-			*allThreads[i] = createThread(&threadFunction, malloc(4096));
-		
-		}
+	int pid;
+	int tid = 0;
+	int allThreadstID[NUMOFTHREADS];
+	pid = fork();
+	for(int i=0;i<NUMOFTHREADS;i++){
+		tid++;
+		allThreadstID[i] = createThread(&threadFunction, malloc(4096));
+	
+	}
+	if (pid < 0){
+		printf(1, "fork failed\n");
 		exit();
-	}
-	else if (pid > 0){
+	} else if (pid == 0){
+		printf(1, "child adding t shared counter\n");
+		printf(1, "before join\n");
+		for(int i=0;i<NUMOFTHREADS;i++){
+			printf(1, "%d\n",joinThread(allThreadstID[i]));
+		}
+		printf(1, "after join \n");
+		exit();
+	} else {
 		wait();
-		printf(1, "thread about to join");
-		joinThread(getThreadID(allThreads[6]));
-		printf(1, "thread joined");
+		printf(1, "after wait %d\n", tid);
 	}
+	exit();
+
 	return 0;
 }
